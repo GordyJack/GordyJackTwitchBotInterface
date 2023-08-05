@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "gordyjackbotinterface",
+	"version": "${version}",
+	"name": "GordyJackBotInterface",
+	"description": "This is a mod to help my bot interface with the game server",
+	"authors": [
+		"GordyJack"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "AGPL-3.0",
+	"icon": "assets/gordyjackbotinterface/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"net.gordyjack.gordyjackbotinterface.BotInterface"
+		],
+		"client": [
+			"net.gordyjack.gordyjackbotinterface.ExampleModClient"
+		]
+	},
+	"mixins": [
+		"gordyjackbotinterface.mixins.json",
+		{
+			"config": "gordyjackbotinterface.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.14.22",
+		"minecraft": "~1.20.1",
+		"java": ">=17",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
