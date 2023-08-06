@@ -49,8 +49,6 @@ public class BotInterface implements ModInitializer {
 		new Thread(() -> {
 			try (ServerSocket serverSocket = new ServerSocket(8000)) {
 				LOGGER.info("Server started");
-				boolean first = true;
-				String player = "@p";
 
 				while (true) {
 					Socket clientSocket = serverSocket.accept();
@@ -59,28 +57,28 @@ public class BotInterface implements ModInitializer {
 
 					List<String> possiblePlayers = new ArrayList<>(Arrays.asList(minecraftServer.getPlayerNames()));
 					possiblePlayers.addAll(Arrays.asList("@p", "@e", "@a"));
+					String playerName = base_command.contains("set_player") ? base_command.substring(base_command.indexOf(' ')+1) : possiblePlayers.get(0);
 
-					LOGGER.debug("possiblePlayers: " + possiblePlayers);
-					if (first && possiblePlayers.contains(base_command)) {
-						player = base_command;
-						first = false;
-						continue;
-					}
+					LOGGER.debug("possiblePlayers: " + possiblePlayers + "\nplayerName: " + playerName);
 
 					LOGGER.info("Command received: " + base_command);
 					if (base_command.startsWith("/")) {
+						LOGGER.debug("Removing prefix");
 						base_command = base_command.substring(1);
 					}
 
-					ServerPlayerEntity playerEntity = minecraftServer.getPlayerManager().getPlayer(player);
-					if (playerEntity == null) continue;
+					ServerPlayerEntity playerEntity = minecraftServer.getPlayerManager().getPlayer(possiblePlayers.get(0));
+					if (playerEntity == null) {
+						LOGGER.error("playerEntity is null. Continuing.");
+						continue;
+					}
 					switch (base_command) {
 						case "chorus" -> {
 							LOGGER.info("Executing command: chorus");
-							ChatEffects.teleportLikeChorusFruit(playerEntity);
+							LOGGER.debug("Teleport result:" + ChatEffects.teleportLikeChorusFruit(playerEntity));
 						}
 						default -> {
-							String command = "execute as " + player + " at @s run " + base_command;
+							String command = "execute as " + playerEntity.getName().getString() + " at @s run " + base_command;
 							LOGGER.info("Executing command: " + command);
 							try {
 								if (playerEntity != null) {
@@ -100,11 +98,12 @@ public class BotInterface implements ModInitializer {
 	}
 
 	private static class ChatEffects {
-		private static final int MAX_TRIES = 16;
+		private static final int MAX_TRIES = 128;
 		private static final Random random = new Random();
 
 		private static boolean teleportLikeChorusFruit(PlayerEntity player, int... tries) {
 			int tries_num = tries.length == 0 ? 0 : tries[0];
+			LOGGER.debug("Starting teleport attempt: " + tries_num);
 			if (tries_num >= MAX_TRIES) return false;
 
 			// Get a random offset between -8 and 8 for x, y, and z
@@ -123,7 +122,8 @@ public class BotInterface implements ModInitializer {
 		private static boolean isSafeToTeleport(PlayerEntity player, BlockPos pos) {
 			// Check the block and the block above are air (or replaceable) and the block below is solid
 			World world = player.getWorld();
-			return world.isAir(pos) && world.isAir(pos.up()) && world.isDirectionSolid(pos, player, Direction.DOWN);
+			LOGGER.debug(pos.toShortString()  + " | " + world.isAir(pos) + " | " + world.isAir(pos.up()) + " | " + world.isAir(pos.down()));
+			return world.isAir(pos) && world.isAir(pos.up()) && !world.isAir(pos.down());
 		}
 	}
 }
