@@ -2,12 +2,18 @@ package net.gordyjack.gordyjackbotinterface;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.block.BlockState;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +25,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 public class BotInterface implements ModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger("gordyjackbotinterface");
@@ -65,22 +72,58 @@ public class BotInterface implements ModInitializer {
 						base_command = base_command.substring(1);
 					}
 
-					String command = "execute as " + player + " at @s run " + base_command;
-					LOGGER.info("Executing command: /" + command);
-
-					try {
-						ServerPlayerEntity playerEntity = minecraftServer.getPlayerManager().getPlayer(player);
-						if (playerEntity != null) {
-							playerEntity.sendMessage(Text.literal("Twitch chat executed: " + base_command));
+					ServerPlayerEntity playerEntity = minecraftServer.getPlayerManager().getPlayer(player);
+					if (playerEntity == null) continue;
+					switch (base_command) {
+						case "chorus" -> {
+							LOGGER.info("Executing command: chorus");
+							ChatEffects.teleportLikeChorusFruit(playerEntity);
 						}
-						minecraftServer.getCommandManager().executeWithPrefix(source, command);
-					} catch (Exception e) {
-						LOGGER.error("Error executing command: /" + command, e);
+						default -> {
+							String command = "execute as " + player + " at @s run " + base_command;
+							LOGGER.info("Executing command: " + command);
+							try {
+								if (playerEntity != null) {
+									playerEntity.sendMessage(Text.literal("Twitch chat executed: " + base_command));
+								}
+								minecraftServer.getCommandManager().executeWithPrefix(source, command);
+							} catch (Exception e) {
+								LOGGER.error("Error executing command: /" + command, e);
+							}
+						}
 					}
 				}
 			} catch (IOException e) {
 				LOGGER.error("Exception caught when trying to listen on port 8000 or listening for a connection", e);
 			}
 		}).start();
+	}
+
+	private static class ChatEffects {
+		private static final int MAX_TRIES = 16;
+		private static final Random random = new Random();
+
+		private static boolean teleportLikeChorusFruit(PlayerEntity player, int... tries) {
+			int tries_num = tries.length == 0 ? 0 : tries[0];
+			if (tries_num >= MAX_TRIES) return false;
+
+			// Get a random offset between -8 and 8 for x, y, and z
+			int x = player.getBlockPos().getX() + random.nextInt(17) - 8;
+			int y = player.getBlockPos().getY() + random.nextInt(17) - 8;
+			int z = player.getBlockPos().getZ() + random.nextInt(17) - 8;
+
+			if (isSafeToTeleport(player, new BlockPos(x, y, z))) {
+				player.teleport(x, y, z);
+				return true;  // Successful teleportation
+			} else {
+				return teleportLikeChorusFruit(player, tries_num + 1);
+			}
+		}
+
+		private static boolean isSafeToTeleport(PlayerEntity player, BlockPos pos) {
+			// Check the block and the block above are air (or replaceable) and the block below is solid
+			World world = player.getWorld();
+			return world.isAir(pos) && world.isAir(pos.up()) && world.isDirectionSolid(pos, player, Direction.DOWN);
+		}
 	}
 }
