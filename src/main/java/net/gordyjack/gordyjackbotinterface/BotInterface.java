@@ -50,6 +50,7 @@ public class BotInterface implements ModInitializer {
 			try (ServerSocket serverSocket = new ServerSocket(8000)) {
 				LOGGER.info("Server started");
 
+				String playerName = "@p";
 				while (true) {
 					Socket clientSocket = serverSocket.accept();
 					BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -57,8 +58,12 @@ public class BotInterface implements ModInitializer {
 
 					List<String> possiblePlayers = new ArrayList<>(Arrays.asList(minecraftServer.getPlayerNames()));
 					possiblePlayers.addAll(Arrays.asList("@p", "@e", "@a"));
-					String playerName = base_command.contains("set_player") ? base_command.substring(base_command.indexOf(' ')+1) : possiblePlayers.get(0);
+					if (base_command.contains("set_player")) {
+						playerName = base_command.substring(base_command.indexOf(' ') + 1);
+						continue;
+					}
 
+					playerName = possiblePlayers.contains(playerName) ? playerName : possiblePlayers.get(0);
 					LOGGER.debug("possiblePlayers: " + possiblePlayers + "\nplayerName: " + playerName);
 
 					LOGGER.info("Command received: " + base_command);
@@ -76,14 +81,13 @@ public class BotInterface implements ModInitializer {
 						case "chorus" -> {
 							LOGGER.info("Executing command: chorus");
 							LOGGER.debug("Teleport result:" + ChatEffects.teleportLikeChorusFruit(playerEntity));
+							playerEntity.sendMessage(Text.literal("Twitch chat wanted you to eat healthier"));
 						}
 						default -> {
 							String command = "execute as " + playerEntity.getName().getString() + " at @s run " + base_command;
 							LOGGER.info("Executing command: " + command);
 							try {
-								if (playerEntity != null) {
-									playerEntity.sendMessage(Text.literal("Twitch chat executed: " + base_command));
-								}
+								playerEntity.sendMessage(Text.literal("Twitch chat executed: " + base_command));
 								minecraftServer.getCommandManager().executeWithPrefix(source, command);
 							} catch (Exception e) {
 								LOGGER.error("Error executing command: /" + command, e);
